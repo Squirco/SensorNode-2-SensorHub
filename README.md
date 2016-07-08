@@ -13,4 +13,6 @@ https://github.com/thijse/Arduino-CmdMessenger
 
 https://github.com/thijse/Arduino-EEPROMEx
 
+https://github.com/WickedDevice/SoftReset
+
 https://github.com/PaulStoffregen/TimerOne
