@@ -1,0 +1,11 @@
+.pioenvs
+.clang_complete
+.gcc-flags.json
+*.zip
+*.yml
+Swap/*
+VCNL4040_old/*
+commands.txt
+lib/TimerThree/*
+config.h
+I2C_ReadAllData.cpp
