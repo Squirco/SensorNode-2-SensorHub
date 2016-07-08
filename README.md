@@ -8,6 +8,9 @@ https://hackaday.io/project/3321-squirco-smart-home-system-sensor-network
 Arduino libraries used in this project may be modified to fit the project. All credits due to the originators.
 
 https://github.com/sparkfun/SparkFun_BME280_Arduino_Library
+
 https://github.com/thijse/Arduino-CmdMessenger
+
 https://github.com/thijse/Arduino-EEPROMEx
+
 https://github.com/PaulStoffregen/TimerOne
