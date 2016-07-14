@@ -11,7 +11,7 @@
 #include "SoftReset.h"
 #include "LED.h"
 
-#define APP_FW_VER 35
+#define APP_FW_VER 36
 
 #define SYS_STATUS_OK						0
 #define SYS_STATUS_NO_CLIMATE		1
@@ -68,12 +68,13 @@ uint16_t lux;
 uint16_t ps;
 
 //night light
-#define LED_CONTROL_MODE_CMD			0
+#define LED_CONTROL_MODE_RESTORE	0
 #define LED_CONTROL_MODE_ALS			1
 #define LED_CONTROL_MODE_PS				2
 #define LED_CONTROL_MODE_ALS_PS		3
 #define LED_CONTROL_MODE_BREATHE	4
-#define LED_CONTROL_MODE_OFF			5
+#define LED_CONTROL_MODE_CMD			5
+#define LED_CONTROL_MODE_OFF			6
 
 bool ledPSTimeoutStart = false;
 bool ledPSTimedout = false;
@@ -82,6 +83,7 @@ uint8_t ledFadeTargetMin;
 uint8_t ledFadeTargetMax;
 uint8_t ledFade;
 uint8_t ledControlMode;
+uint8_t ledControlModeRestore;
 
 void ledController(void);
 void ledPSControl(void);
@@ -137,12 +139,13 @@ enum
 	kSLedMode,						//21
 	kQLedMode,						//22
 	kRLedMode,						//23
-	kSLedFadeMinMax,			//24
-	kQLedFadeMinMax,			//25
-	kRLedFadeMinMax,			//26
-	kSLedCmdFadeTo,				//27
-	kSCalibratePS,				//28
-	kSReset,							//29
+	kSLedModeRestore,			//24
+	kSLedFadeMinMax,			//25
+	kQLedFadeMinMax,			//26
+	kRLedFadeMinMax,			//27
+	kSLedCmdFadeTo,				//28
+	kSCalibratePS,				//29
+	kSReset								//30
 };
 
 void attachCommandCallbacks()
@@ -161,6 +164,7 @@ void attachCommandCallbacks()
 	cmdMessenger.attach(kQPS, onReturnPSQuery);
 	cmdMessenger.attach(kSLedMode, onLedSetMode);
 	cmdMessenger.attach(kQLedMode, onLedReturnMode);
+	cmdMessenger.attach(kSLedModeRestore, onLedRestoreMode);
 	cmdMessenger.attach(kSLedFadeMinMax, onLedSetFadeLimits);
 	cmdMessenger.attach(kQLedFadeMinMax, onLedReturnFadeLimits);
 	cmdMessenger.attach(kSLedCmdFadeTo, onLedFadeTo);
@@ -542,8 +546,9 @@ void onReturnPSQuery(
 void onLedSetMode()
 {
 	uint8_t mode = (uint8_t)cmdMessenger.readInt16Arg();
-	if (mode>=LED_CONTROL_MODE_CMD && mode<=LED_CONTROL_MODE_OFF)
+	if (mode>=LED_CONTROL_MODE_RESTORE && mode<=LED_CONTROL_MODE_OFF)
 	{
+		ledControlModeRestore = ledControlMode;
 		ledControlMode = mode;
 	}
 	onLedReturnMode();
@@ -552,6 +557,12 @@ void onLedSetMode()
 void onLedReturnMode()
 {
 	cmdMessenger.sendCmd(kRLedMode, ledControlMode);
+}
+
+void onLedRestoreMode()
+{
+	ledControlMode = ledControlModeRestore;
+	onLedReturnMode();
 }
 
 void onLedSetFadeLimits()
