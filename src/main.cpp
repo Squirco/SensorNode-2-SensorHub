@@ -292,7 +292,7 @@ void sysTaskTimer(void)
 void sysLoadDefault(void)
 {
   sysDataPushMode = ON;
-  sysDataPushInterval = 5000;
+  sysDataPushInterval = 10000;
   ledControlMode = LED_CONTROL_MODE_ALS_PS;
   ledFadeTargetMin = 0;
   ledFadeTargetMax = 100;
@@ -301,9 +301,9 @@ void sysLoadDefault(void)
 void sysLoadSettings(void)
 {
 	uint8_t settingsSaved = EEPROM.read(0);
-	if (settingsSaved!=1) {
+	if (settingsSaved==1) {
 		sysDataPushMode = EEPROM.read(4);
-	  sysDataPushInterval = EEPROM.readInt(6);
+	  //sysDataPushInterval = EEPROM.readInt(6);
 		ledControlMode = EEPROM.read(10);
 	  ledFadeTargetMin = EEPROM.read(12);
 	  ledFadeTargetMax = EEPROM.read(14);
@@ -318,7 +318,7 @@ void sysLoadSettings(void)
 void sysSaveSettings(void)
 {
 	EEPROM.updateByte(4, sysDataPushMode);
-	EEPROM.updateInt(6, sysDataPushInterval);
+	//EEPROM.updateInt(6, sysDataPushInterval);
 	EEPROM.updateByte(10, ledControlMode);
 	EEPROM.updateByte(12, ledFadeTargetMin);
 	EEPROM.updateByte(14, ledFadeTargetMax);
