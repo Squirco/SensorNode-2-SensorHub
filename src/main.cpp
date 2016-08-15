@@ -11,12 +11,13 @@
 #include "SoftReset.h"
 #include "LED.h"
 
-#define APP_FW_VER 37
+#define APP_FW_VER 39
 
 #define SYS_STATUS_OK						0
 #define SYS_STATUS_NO_CLIMATE		1
 #define SYS_STATUS_NO_ALS				2
 #define SYS_STATUS_NO_SENSORS		3
+#define SYS_SETTINGS_SAVED			4
 
 #define LEDPIN 9
 
@@ -262,6 +263,7 @@ void sysTaskProcessor(void)
 			break;
 		case SYS_TASK_SAVE_SETTINGS:
 			sysSaveSettings();
+			cmdMessenger.sendCmd(kRStatus, SYS_SETTINGS_SAVED);
 			sysTaskFlag = SYS_TASK_DEFAULT;
 		default:
 			sysTaskFlag = SYS_TASK_DEFAULT;
@@ -292,7 +294,7 @@ void sysTaskTimer(void)
 void sysLoadDefault(void)
 {
   sysDataPushMode = ON;
-  sysDataPushInterval = 10000;
+  sysDataPushInterval = 20000;
   ledControlMode = LED_CONTROL_MODE_ALS_PS;
   ledFadeTargetMin = 0;
   ledFadeTargetMax = 100;
@@ -300,10 +302,11 @@ void sysLoadDefault(void)
 
 void sysLoadSettings(void)
 {
+	sysLoadDefault();
 	uint8_t settingsSaved = EEPROM.read(0);
 	if (settingsSaved==1) {
 		sysDataPushMode = EEPROM.read(4);
-	  //sysDataPushInterval = EEPROM.readInt(6);
+	  sysDataPushInterval = EEPROM.readInt(6);
 		ledControlMode = EEPROM.read(10);
 	  ledFadeTargetMin = EEPROM.read(12);
 	  ledFadeTargetMax = EEPROM.read(14);
@@ -318,7 +321,7 @@ void sysLoadSettings(void)
 void sysSaveSettings(void)
 {
 	EEPROM.updateByte(4, sysDataPushMode);
-	//EEPROM.updateInt(6, sysDataPushInterval);
+	EEPROM.updateInt(6, sysDataPushInterval);
 	EEPROM.updateByte(10, ledControlMode);
 	EEPROM.updateByte(12, ledFadeTargetMin);
 	EEPROM.updateByte(14, ledFadeTargetMax);
