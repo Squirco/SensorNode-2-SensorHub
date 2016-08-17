@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <stdint.h>
 #include <avr/pgmspace.h>
+#include <avr/power.h>
+#include <avr/sleep.h>
 #include "EEPROMex.h"
 #include "SparkFunBME280.h"
 #include "Wire.h"
@@ -11,7 +13,7 @@
 #include "SoftReset.h"
 #include "LED.h"
 
-#define APP_FW_VER 39
+#define APP_FW_VER 40
 
 #define SYS_STATUS_OK						0
 #define SYS_STATUS_NO_CLIMATE		1
@@ -223,6 +225,8 @@ void sysTaskProcessor(void)
 				default:
 					break;
 			}
+			//set_sleep_mode(SLEEP_MODE_IDLE);
+			//sleep_enable();
 			break;
 		case SYS_TASK_PUSH_DATA:
 			if (sensorDataPushed == false)
@@ -277,16 +281,19 @@ void sysTaskTimer(void)
 
 	if (sysTaskCounter % 10 == 0) {
 		ledFadeFlag = true;
+		//sleep_disable();
 	}
 
 	if ((sysTaskCounter % sysDataPushInterval == 0) && (sysDataPushMode > 0)) {
 		sensorDataPushed = false;
 		sysTaskFlag = SYS_TASK_PUSH_DATA;
+		//sleep_disable();
 	}
 
   if ((sysTaskCounter % ledPSTimeout == 0) && (ledPSTimeoutStart == true)) {
     ledPSTimeoutStart = false;
     ledPSTimedout = true;
+		//sleep_disable();
   }
 }
 
@@ -330,6 +337,8 @@ void sysSaveSettings(void)
 
 uint8_t sysBootTest(void)
 {
+	alsSensor.id();
+	climateSensor.id();
 	if (!(alsSensor.id()==VCNL4040_ID_L)) {
 		if (!(climateSensor.id()==BME280_ID)) {
 			return SYS_STATUS_NO_SENSORS;
@@ -524,6 +533,7 @@ void onSoftReset()
 
 void setup()
 {
+	delay(1000);
 	Serial.begin(38400);
 	sysStatus = sysBootTest();
 
@@ -542,7 +552,7 @@ if (!((sysStatus==SYS_STATUS_NO_CLIMATE) || (sysStatus==SYS_STATUS_NO_SENSORS)))
 	climateSensor.settings.commInterface = I2C_MODE;
 	climateSensor.settings.I2CAddress = 0x76;
 	climateSensor.settings.runMode = 3;
-	climateSensor.settings.tStandby = 0;
+	climateSensor.settings.tStandby = 5;
 	climateSensor.settings.filter = 0;
 	climateSensor.settings.tempOverSample = 1;
 	climateSensor.settings.pressOverSample = 1;
