@@ -14,6 +14,6 @@ https://github.com/WickedDevice/SoftReset
 https://github.com/PaulStoffregen/TimerOne  
 
 #License Information
-Files are released under <a href = "https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>  
+Files are released under the MIT License 
 Original Design by Steven  
 Distributed as-is; no warranty is given
