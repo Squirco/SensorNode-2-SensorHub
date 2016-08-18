@@ -225,8 +225,6 @@ void sysTaskProcessor(void)
 				default:
 					break;
 			}
-			//set_sleep_mode(SLEEP_MODE_IDLE);
-			//sleep_enable();
 			break;
 		case SYS_TASK_PUSH_DATA:
 			if (sensorDataPushed == false)
@@ -576,4 +574,6 @@ void loop()
 	cmdMessenger.feedinSerialData();
 	ledController();
 	sysTaskProcessor();
+	//set_sleep_mode(SLEEP_MODE_IDLE);
+	//sleep_enable();
 }
