@@ -20,6 +20,7 @@
 #define SYS_STATUS_NO_CLIMATE		0x2bad
 #define SYS_STATUS_NO_ALS				0x3bad
 #define SYS_PS_CALIBRATED				0x355c
+#define SYS_PS_CALIBRATE_FAIL		0x35fc
 #define SYS_STATUS_NO_SENSORS		0xabad
 
 
@@ -519,8 +520,14 @@ void onLedFadeTo()
 }
 void onCalibratePS()
 {
-	alsSensor.psCalibrate();
-	cmdMessenger.sendCmd(kRCalibratePS, SYS_PS_CALIBRATED);
+	if(alsSensor.psCalibrate())
+	{
+		cmdMessenger.sendCmd(kRCalibratePS, SYS_PS_CALIBRATED);
+	}
+	else
+	{
+		cmdMessenger.sendCmd(kRCalibratePS, SYS_PS_CALIBRATE_FAIL);
+	}
 }
 void onSoftReset()
 {
