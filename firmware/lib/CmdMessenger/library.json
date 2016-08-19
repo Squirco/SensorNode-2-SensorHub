@@ -18,19 +18,9 @@
     "type": "git",
     "url": "https://github.com/thijse/Arduino-CmdMessenger.git"
   },
-  "dependencies": 
+  "dependencies":
   [
-    {
-      "name": "PID",
-      "frameworks": "arduino"
-    },
-    {
-      "name": "Adafruit-MAX31885",
-      "frameworks": "arduino"
-    }
+
   ],
   "frameworks": "arduino"
 }
-
-
- 

@@ -13,13 +13,15 @@
 #include "SoftReset.h"
 #include "LED.h"
 
-#define APP_FW_VER 40
+#define APP_FW_VER 42
 
-#define SYS_STATUS_OK						0
-#define SYS_STATUS_NO_CLIMATE		1
-#define SYS_STATUS_NO_ALS				2
-#define SYS_STATUS_NO_SENSORS		3
-#define SYS_SETTINGS_SAVED			4
+#define SYS_STATUS_OK						0x090d
+#define SYS_SETTINGS_SAVED			0x055d
+#define SYS_STATUS_NO_CLIMATE		0x2bad
+#define SYS_STATUS_NO_ALS				0x3bad
+#define SYS_PS_CALIBRATED				0x355c
+#define SYS_STATUS_NO_SENSORS		0xabad
+
 
 #define LEDPIN 9
 
@@ -35,11 +37,11 @@
 //system settings
 uint32_t sysDataPushInterval;
 uint8_t sysDataPushMode;
-uint8_t sysStatus;
+uint16_t sysStatus;
 void sysLoadSettings(void);
 void sysSaveSettings(void);
 void sysLoadDefault(void);
-uint8_t sysBootTest(void);
+uint16_t sysBootTest(void);
 
 //System Tasker
 void sysTaskTimer(void);
@@ -148,7 +150,8 @@ enum
 	kRLedFadeMinMax,			//27
 	kSLedCmdFadeTo,				//28
 	kSCalibratePS,				//29
-	kSReset								//30
+	kRCalibratePS,				//30
+	kSReset								//31
 };
 
 void attachCommandCallbacks()
@@ -235,6 +238,7 @@ void sysTaskProcessor(void)
 					cmdMessenger.sendCmd(kRHumi, humidity);
 					cmdMessenger.sendCmd(kRPres, pressure);
 					cmdMessenger.sendCmd(kRLux, lux);
+					cmdMessenger.sendCmd(kRPS, ps);
 				}
 			}
 
@@ -333,7 +337,7 @@ void sysSaveSettings(void)
 	EEPROM.updateByte(0, 1);
 }
 
-uint8_t sysBootTest(void)
+uint16_t sysBootTest(void)
 {
 	alsSensor.id();
 	climateSensor.id();
@@ -351,13 +355,6 @@ uint8_t sysBootTest(void)
 }
 
 //ALS & Prox Functions
-
-void sensorPsISR()
-{
-	detachInterrupt(digitalPinToInterrupt(2));
-	sysTaskFlag = SYS_TASK_NL_CONTROL;
-}
-
 void ledPSControl()
 {
 	if (ps >= sensorPSTriggerH) {
@@ -523,6 +520,7 @@ void onLedFadeTo()
 void onCalibratePS()
 {
 	alsSensor.psCalibrate();
+	cmdMessenger.sendCmd(kRCalibratePS, SYS_PS_CALIBRATED);
 }
 void onSoftReset()
 {
@@ -565,8 +563,6 @@ if (!((sysStatus==SYS_STATUS_NO_CLIMATE) || (sysStatus==SYS_STATUS_NO_SENSORS)))
 	cmdMessenger.printLfCr();
 	attachCommandCallbacks();
 	cmdMessenger.sendCmd(kRStatus,sysStatus);
-	//Serial.println("Boot");
-	//Serial.println("----------");
 }
 
 void loop()
