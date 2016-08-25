@@ -65,8 +65,8 @@ bool sensorPsCalibrated = false;
 
 const uint8_t sensorALSTriggerL = 5;
 const uint8_t sensorALSTriggerH = 7;
-const uint8_t sensorPSTriggerL = 3;
-const uint8_t sensorPSTriggerH = 5;
+const uint8_t sensorPSTriggerL = 5;
+const uint8_t sensorPSTriggerH = 7;
 
 uint16_t temperature;
 uint16_t humidity;
@@ -86,7 +86,7 @@ uint16_t psCal;
 
 bool ledPSTimeoutStart = false;
 bool ledPSTimedout = false;
-uint16_t ledPSTimeout = 18000;
+uint16_t ledPSTimeout = 30000;
 uint8_t ledFadeTargetMin;
 uint8_t ledFadeTargetMax;
 uint8_t ledFade;
@@ -294,25 +294,15 @@ void sysTaskProcessor(void)
 			{
 				delay(500);
 				psCalFactor = alsSensor.psCalibrate();
-
-				if (psCalFactor > (psCal+sensorPSTriggerH)) {
-					if (alsSensor.psSetCanc(psCalFactor)) {
-						psCal = psCalFactor;
-						sensorPsCalibrated = true;
-						cmdMessenger.sendCmd(kRCalibratePS, psCal);
-						sysTaskFlag = SYS_TASK_SAVE_SETTINGS;
-					}
-					else
-					{
-						cmdMessenger.sendCmd(kRCalibratePS, SYS_PS_CALIBRATE_FAIL);
-						sysTaskFlag = SYS_TASK_DEFAULT;
-					}
+				if (alsSensor.psSetCanc(psCalFactor)) {
+					psCal = psCalFactor;
+					sensorPsCalibrated = true;
+					cmdMessenger.sendCmd(kRCalibratePS, SYS_PS_CALIBRATED);
+					sysTaskFlag = SYS_TASK_SAVE_SETTINGS;
 				}
 				else
 				{
-					alsSensor.psSetCanc(psCal);
-					sensorPsCalibrated = true;
-					cmdMessenger.sendCmd(kRCalibratePS, psCal);
+					cmdMessenger.sendCmd(kRCalibratePS, SYS_PS_CALIBRATE_FAIL);
 					sysTaskFlag = SYS_TASK_DEFAULT;
 				}
 			}
@@ -533,6 +523,10 @@ void onLedSetMode()
 	{
 		ledControlModeRestore = ledControlMode;
 		ledControlMode = mode;
+		if (ledControlMode == LED_CONTROL_MODE_ALS_PS) {
+			ledFadeTarget = ledFadeTargetMin;
+			sensorPollALS = true;
+		}
 	}
 	onLedReturnMode();
 }
@@ -605,7 +599,7 @@ void setup()
 	if (!((sysStatus==SYS_STATUS_NO_ALS) || (sysStatus==SYS_STATUS_NO_SENSORS)))
 	{
 		alsSensor.alsConf(0x4C);
-		alsSensor.psConf(0xFE, 0x08, 0, 0x07);
+		alsSensor.psConf(0x0E, 0x08, 0, 0x07);
 		alsSensor.ps();
 		alsSensor.lux();
 	}
