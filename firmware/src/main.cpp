@@ -13,7 +13,7 @@
 #include "SoftReset.h"
 #include "LED.h"
 
-#define APP_FW_VER "1.0.0"
+#define APP_FW_VER "1.0.0-rc.1"
 
 #define SYS_STATUS_OK						0x090d
 #define SYS_SETTINGS_SAVED			0x055d
@@ -617,6 +617,8 @@ void setup()
 	sysLoadSettings();
 	if (sensorPsCalibrated) {
 		alsSensor.psSetCanc(psCal);
+		ps=alsSensor.ps();
+		lux=alsSensor.lux();
 	}
 	cmdMessenger.printLfCr();
 	attachCommandCallbacks();
