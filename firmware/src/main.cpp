@@ -86,7 +86,7 @@ uint16_t psCal;
 
 bool ledPSTimeoutStart = false;
 bool ledPSTimedout = false;
-uint16_t ledPSTimeout = 35000;
+uint16_t ledPSTimeout = 18000;
 uint8_t ledFadeTargetMin;
 uint8_t ledFadeTargetMax;
 uint8_t ledFade;
