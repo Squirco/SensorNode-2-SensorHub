@@ -90,27 +90,25 @@ bool VCNL4040::psConf(uint8_t conf1, uint8_t conf2, uint8_t conf3, uint8_t ms)
   return true;
 }
 
-bool VCNL4040::psCalibrate()
+uint16_t VCNL4040::psIdle()
 {
-  uint8_t max;
-	uint8_t mode;
-	uint8_t tally[10];
-	for (uint8_t i = 0; i < 100; i++) {
-		tally[ps()]++;
-	}
-
-	for (uint8_t j = 0; j < 10; j++) {
-		if (tally[j] > max) {
-			max = tally[j];
-			mode = j;
-		}
-	}
-
-  if(!psSetCanc(mode))
-  {
-    return false;
+  uint32_t tally=0;
+  for (uint8_t i=0; i<15; i++){
+    tally+=ps();
   }
-  return true;
+
+  return (uint16_t)(tally/16);
+
+}
+
+uint16_t VCNL4040::psCalibrate()
+{
+  uint32_t tally = 0;
+  for (uint8_t i = 0; i < 8; i++) {
+		tally+=ps();
+	}
+  tally = tally/8;
+  return (uint16_t)tally;
 }
 
 bool VCNL4040::psSetCanc(uint16_t level)

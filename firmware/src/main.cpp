@@ -13,7 +13,7 @@
 #include "SoftReset.h"
 #include "LED.h"
 
-#define APP_FW_VER 42
+#define APP_FW_VER 93
 
 #define SYS_STATUS_OK						0x090d
 #define SYS_SETTINGS_SAVED			0x055d
@@ -30,6 +30,7 @@
 #define SYS_TASK_PUSH_DATA			1
 #define SYS_TASK_NL_CONTROL			2
 #define SYS_TASK_SAVE_SETTINGS	3
+#define SYS_TASK_CALIBRATE			4
 
 #define NONE	0
 #define OFF		0
@@ -60,6 +61,7 @@ bool sensorDataReady = false;
 bool sensorDataPushed = false;
 bool sensorPollALS = true;
 bool sensorPollPS = true;
+bool sensorPsCalibrated = false;
 
 const uint8_t sensorALSTriggerL = 5;
 const uint8_t sensorALSTriggerH = 7;
@@ -71,6 +73,7 @@ uint16_t humidity;
 uint32_t pressure;
 uint16_t lux;
 uint16_t ps;
+uint16_t psCal;
 
 //night light
 #define LED_CONTROL_MODE_RESTORE	0
@@ -184,6 +187,7 @@ void sysTaskProcessor(void)
 {
 	switch (sysTaskFlag) {
 		case SYS_TASK_DEFAULT:
+		{
 			sensorDataReady = false;
 			if (!sensorDataReady) {
 				if (sensorPollALS) {
@@ -230,7 +234,9 @@ void sysTaskProcessor(void)
 					break;
 			}
 			break;
+		}
 		case SYS_TASK_PUSH_DATA:
+		{
 			if (sensorDataPushed == false)
 			{
 				if (sensorDataReady) {
@@ -239,13 +245,17 @@ void sysTaskProcessor(void)
 					cmdMessenger.sendCmd(kRHumi, humidity);
 					cmdMessenger.sendCmd(kRPres, pressure);
 					cmdMessenger.sendCmd(kRLux, lux);
-					cmdMessenger.sendCmd(kRPS, ps);
+					if (sensorPsCalibrated) {
+						cmdMessenger.sendCmd(kRPS, ps);
+					}
 				}
 			}
 
 			sysTaskFlag = SYS_TASK_DEFAULT;
 			break;
+		}
 		case SYS_TASK_NL_CONTROL:
+		{
 			switch (ledControlMode)
 			{
         case LED_CONTROL_MODE_PS:
@@ -268,13 +278,56 @@ void sysTaskProcessor(void)
 			}
 			sysTaskFlag = SYS_TASK_DEFAULT;
 			break;
+		}
 		case SYS_TASK_SAVE_SETTINGS:
+		{
 			sysSaveSettings();
 			cmdMessenger.sendCmd(kRStatus, SYS_SETTINGS_SAVED);
 			sysTaskFlag = SYS_TASK_DEFAULT;
+			break;
+		}
+		case SYS_TASK_CALIBRATE:
+		{
+			sensorPsCalibrated = false;
+			uint16_t psCalFactor;
+			if(alsSensor.psSetCanc(0))
+			{
+				delay(500);
+				psCalFactor = alsSensor.psCalibrate();
+
+				if (psCalFactor > (psCal+sensorPSTriggerH)) {
+					if (alsSensor.psSetCanc(psCalFactor)) {
+						psCal = psCalFactor;
+						sensorPsCalibrated = true;
+						cmdMessenger.sendCmd(kRCalibratePS, psCal);
+						sysTaskFlag = SYS_TASK_SAVE_SETTINGS;
+					}
+					else
+					{
+						cmdMessenger.sendCmd(kRCalibratePS, SYS_PS_CALIBRATE_FAIL);
+						sysTaskFlag = SYS_TASK_DEFAULT;
+					}
+				}
+				else
+				{
+					alsSensor.psSetCanc(psCal);
+					sensorPsCalibrated = true;
+					cmdMessenger.sendCmd(kRCalibratePS, psCal);
+					sysTaskFlag = SYS_TASK_DEFAULT;
+				}
+			}
+			else
+			{
+				cmdMessenger.sendCmd(kRCalibratePS, SYS_PS_CALIBRATE_FAIL);
+				sysTaskFlag = SYS_TASK_DEFAULT;
+			}
+			break;
+		}
 		default:
+		{
 			sysTaskFlag = SYS_TASK_DEFAULT;
 			break;
+		}
 	}
 }
 
@@ -290,7 +343,6 @@ void sysTaskTimer(void)
 	if ((sysTaskCounter % sysDataPushInterval == 0) && (sysDataPushMode > 0)) {
 		sensorDataPushed = false;
 		sysTaskFlag = SYS_TASK_PUSH_DATA;
-		//sleep_disable();
 	}
 
   if ((sysTaskCounter % ledPSTimeout == 0) && (ledPSTimeoutStart == true)) {
@@ -320,6 +372,8 @@ void sysLoadSettings(void)
 		ledControlMode = EEPROM.read(10);
 	  ledFadeTargetMin = EEPROM.read(12);
 	  ledFadeTargetMax = EEPROM.read(14);
+		sensorPsCalibrated = EEPROM.read(16);
+		psCal = EEPROM.readInt(18);
 	}
 	else
 	{
@@ -335,6 +389,8 @@ void sysSaveSettings(void)
 	EEPROM.updateByte(10, ledControlMode);
 	EEPROM.updateByte(12, ledFadeTargetMin);
 	EEPROM.updateByte(14, ledFadeTargetMax);
+	EEPROM.updateByte(16, sensorPsCalibrated);
+	EEPROM.updateInt(18, psCal);
 	EEPROM.updateByte(0, 1);
 }
 
@@ -358,21 +414,23 @@ uint16_t sysBootTest(void)
 //ALS & Prox Functions
 void ledPSControl()
 {
-	if (ps >= sensorPSTriggerH) {
-		sensorPollALS = false;
-		ledFadeTarget = ledFadeTargetMax;
-		ledPSTimeoutStart = true;
-		ledPSTimedout = false;
-	}
-	else if ((ps <= sensorPSTriggerL) && ledPSTimedout == true)
-	{
-		ledFadeTarget = ledFadeTargetMin;
-		sensorPollALS = true;
-	}
-	else
-	{
-		ledPSTimeoutStart = true;
-		ledPSTimedout = false;
+	if (sensorPsCalibrated) {
+		if (ps >= sensorPSTriggerH) {
+			sensorPollALS = false;
+			ledFadeTarget = ledFadeTargetMax;
+			ledPSTimeoutStart = true;
+			ledPSTimedout = false;
+		}
+		else if ((ps <= sensorPSTriggerL) && ledPSTimedout == true)
+		{
+			ledFadeTarget = ledFadeTargetMin;
+			sensorPollALS = true;
+		}
+		else
+		{
+			ledPSTimeoutStart = true;
+			ledPSTimedout = false;
+		}
 	}
 }
 //LED Control Functions
@@ -464,9 +522,7 @@ void onReturnLuxQuery()
 	lux = alsSensor.lux();
 	cmdMessenger.sendCmd(kRLux, lux);
 }
-void onReturnPSQuery(
-
-){
+void onReturnPSQuery(){
 	cmdMessenger.sendCmd(kRPS, alsSensor.ps());
 }
 
@@ -520,14 +576,7 @@ void onLedFadeTo()
 }
 void onCalibratePS()
 {
-	if(alsSensor.psCalibrate())
-	{
-		cmdMessenger.sendCmd(kRCalibratePS, SYS_PS_CALIBRATED);
-	}
-	else
-	{
-		cmdMessenger.sendCmd(kRCalibratePS, SYS_PS_CALIBRATE_FAIL);
-	}
+	sysTaskFlag = SYS_TASK_CALIBRATE;
 }
 void onSoftReset()
 {
@@ -540,33 +589,35 @@ void setup()
 	Serial.begin(38400);
 	sysStatus = sysBootTest();
 
+	if (!((sysStatus==SYS_STATUS_NO_CLIMATE) || (sysStatus==SYS_STATUS_NO_SENSORS)))
+	{
+		climateSensor.settings.commInterface = I2C_MODE;
+		climateSensor.settings.I2CAddress = 0x76;
+		climateSensor.settings.runMode = 3;
+		climateSensor.settings.tStandby = 5;
+		climateSensor.settings.filter = 0;
+		climateSensor.settings.tempOverSample = 1;
+		climateSensor.settings.pressOverSample = 1;
+		climateSensor.settings.humidOverSample = 1;
+		climateSensor.begin();
+	}
+
 	if (!((sysStatus==SYS_STATUS_NO_ALS) || (sysStatus==SYS_STATUS_NO_SENSORS)))
 	{
 		alsSensor.alsConf(0x4C);
-		alsSensor.psConf(0xFE, 0x08, 0, 0x08);
-		alsSensor.psCalibrate();
-
-		lux = alsSensor.lux();
-		ps = alsSensor.ps();
+		alsSensor.psConf(0xFE, 0x08, 0, 0x07);
+		alsSensor.ps();
+		alsSensor.lux();
 	}
 
-if (!((sysStatus==SYS_STATUS_NO_CLIMATE) || (sysStatus==SYS_STATUS_NO_SENSORS)))
-{
-	climateSensor.settings.commInterface = I2C_MODE;
-	climateSensor.settings.I2CAddress = 0x76;
-	climateSensor.settings.runMode = 3;
-	climateSensor.settings.tStandby = 5;
-	climateSensor.settings.filter = 0;
-	climateSensor.settings.tempOverSample = 1;
-	climateSensor.settings.pressOverSample = 1;
-	climateSensor.settings.humidOverSample = 1;
-	climateSensor.begin();
-}
 	Timer1.initialize(400);
 	Timer1.attachInterrupt(sysTaskTimer);
 	Timer1.pwm(LEDPIN, 0);
 
 	sysLoadSettings();
+	if (sensorPsCalibrated) {
+		alsSensor.psSetCanc(psCal);
+	}
 	cmdMessenger.printLfCr();
 	attachCommandCallbacks();
 	cmdMessenger.sendCmd(kRStatus,sysStatus);

@@ -25,7 +25,6 @@
 /* VCNL4040 Class */
 class VCNL4040 {
 public:
-
     //Initialization
     VCNL4040();
     ~VCNL4040();
@@ -37,9 +36,10 @@ public:
     uint16_t lux();
 
     bool psConf(uint8_t conf1, uint8_t conf2, uint8_t conf3, uint8_t ms);
-    bool psCalibrate(void);
+    uint16_t psCalibrate(void);
     bool psSetCanc(uint16_t level);
     bool psSetIntThres(uint16_t high, uint16_t low);
+    uint16_t psIdle();
     uint16_t ps();
     uint16_t white();
 
