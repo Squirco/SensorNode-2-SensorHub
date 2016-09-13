@@ -346,7 +346,7 @@ void sysTaskTimer(void)
 void sysLoadDefault(void)
 {
   sysDataPushMode = ON;
-  sysDataPushInterval = 20000;
+  sysDataPushInterval = 10000;
   ledControlMode = LED_CONTROL_MODE_ALS_PS;
   ledFadeTargetMin = 0;
   ledFadeTargetMax = 100;
